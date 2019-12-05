@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"html/template"
 	"log"
+	"os"
 	"net/http"
 )
 
@@ -27,6 +28,10 @@ func loadPage(title string) (*Page, error) {
 	}
 
 	return &Page{Title: title, Body: body}, nil
+}
+
+func indexHandler(w http.ResponseWriter, r *http.Request) {
+
 }
 
 func viewHandler(w http.ResponseWriter, r *http.Request) {
@@ -58,15 +63,19 @@ func saveHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	http.HandleFunc("/", indexHandler)
 	http.HandleFunc("/view/", viewHandler)
 	http.HandleFunc("/edit/", editHandler)
 	http.HandleFunc("/save/", saveHandler)
-	log.Fatal(http.ListenAndServe(":8080", nil))
 
-/*
-	p1 := &Page{Title: "TestPage", Body: []byte("Hi I'm a page")}
-	p1.save()
-	p2, _ := loadPage("TestPage")
-	fmt.Println(string(p2.Body))
-	*/
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+		log.Printf("Defaulting to port %s", port)
+	}
+
+	log.Printf("Listening on port %s", port)
+	if err := http.ListenAndServe(":" + port, nil); err != nil {
+		log.Fatal(err)
+	}
 }
