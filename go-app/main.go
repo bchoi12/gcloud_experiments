@@ -31,7 +31,7 @@ func loadPage(title string) (*Page, error) {
 }
 
 func indexHandler(w http.ResponseWriter, r *http.Request) {
-
+	fmt.Fprintf(w, "Hi!")
 }
 
 func viewHandler(w http.ResponseWriter, r *http.Request) {
