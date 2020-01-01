@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"html/template"
+	"io/ioutil"
 	"log"
 	"os"
 	"net/http"
@@ -44,6 +44,11 @@ func viewHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "<h1>%s</h1><div>%s</div>", p.Title, p.Body)
 }
 
+func stickerHandler(w http.ResponseWriter, r *http.Request) {
+	img := r.URL.Path[len("/sticker/"):]
+	http.ServeFile(w, r, "sticker/" + img)
+}
+
 func editHandler(w http.ResponseWriter, r *http.Request) {
 		title := r.URL.Path[len("/edit/"):]
 		p, err := loadPage(title)
@@ -65,8 +70,9 @@ func saveHandler(w http.ResponseWriter, r *http.Request) {
 func main() {
 	http.HandleFunc("/", indexHandler)
 	http.HandleFunc("/view/", viewHandler)
-	http.HandleFunc("/edit/", editHandler)
-	http.HandleFunc("/save/", saveHandler)
+	// http.HandleFunc("/edit/", editHandler)
+	// http.HandleFunc("/save/", saveHandler)
+	http.HandleFunc("/sticker/", stickerHandler)
 
 	port := os.Getenv("PORT")
 	if port == "" {
