@@ -46,15 +46,11 @@ func viewHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func stickerHandler(w http.ResponseWriter, r *http.Request) {
-	img := r.URL.Path[len("/sticker/"):]
-	log.Printf(img)
-	if strings.HasPrefix(img, "meta/") {
-		filename := img[len("meta/"):] + ".txt"
-		log.Printf(filename)
-		http.ServeFile(w, r, "sticker/" + filename)
-	} else {
-		http.ServeFile(w, r, "sticker/" + img)
+	file := r.URL.Path[len("/sticker/"):]
+	if strings.HasPrefix(file, "meta/") {
+		file = file[len("meta/"):] + ".txt"
 	}
+	http.ServeFile(w, r, "sticker/" + file)
 }
 
 func editHandler(w http.ResponseWriter, r *http.Request) {
