@@ -5,8 +5,9 @@ import (
 	"html/template"
 	"io/ioutil"
 	"log"
-	"os"
 	"net/http"
+	"os"
+	"strings"
 )
 
 type Page struct {
@@ -46,7 +47,14 @@ func viewHandler(w http.ResponseWriter, r *http.Request) {
 
 func stickerHandler(w http.ResponseWriter, r *http.Request) {
 	img := r.URL.Path[len("/sticker/"):]
-	http.ServeFile(w, r, "sticker/" + img)
+	log.Printf(img)
+	if strings.HasPrefix(img, "meta/") {
+		filename := img[len("meta/"):] + ".txt"
+		log.Printf(filename)
+		http.ServeFile(w, r, "sticker/" + filename)
+	} else {
+		http.ServeFile(w, r, "sticker/" + img)
+	}
 }
 
 func editHandler(w http.ResponseWriter, r *http.Request) {
