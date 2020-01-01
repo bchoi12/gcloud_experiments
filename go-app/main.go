@@ -7,7 +7,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"strings"
 )
 
 type Page struct {
@@ -47,9 +46,6 @@ func viewHandler(w http.ResponseWriter, r *http.Request) {
 
 func stickerHandler(w http.ResponseWriter, r *http.Request) {
 	file := r.URL.Path[len("/sticker/"):]
-	if strings.HasPrefix(file, "meta/") {
-		file = file[len("meta/"):] + ".txt"
-	}
 	http.ServeFile(w, r, "sticker/" + file)
 }
 
