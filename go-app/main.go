@@ -44,6 +44,11 @@ func viewHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "<h1>%s</h1><div>%s</div>", p.Title, p.Body)
 }
 
+func bbbHandler(w http.ResponseWriter, r *http.Request) {
+	file := r.URL.Path[len("/bbb/"):]
+	http.ServeFile(w, r, "bbb/" + file)
+}
+
 func stickerHandler(w http.ResponseWriter, r *http.Request) {
 	file := r.URL.Path[len("/sticker/"):]
 	http.ServeFile(w, r, "sticker/" + file)
@@ -73,6 +78,7 @@ func main() {
 	// http.HandleFunc("/edit/", editHandler)
 	// http.HandleFunc("/save/", saveHandler)
 	http.HandleFunc("/sticker/", stickerHandler)
+	http.HandleFunc("/bbb/", bbbHandler)
 
 	port := os.Getenv("PORT")
 	if port == "" {
