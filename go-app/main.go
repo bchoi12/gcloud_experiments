@@ -2,83 +2,21 @@ package main
 
 import (
 	"fmt"
-	"html/template"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
 )
 
-type Page struct {
-	Title string
-	Body []byte
-}
-
-func (p *Page) save() error {
-	filename := p.Title + ".txt"
-	return ioutil.WriteFile(filename, p.Body, 0600)
-}
-
-func loadPage(title string) (*Page, error) {
-	filename := title + ".txt"
-	body, err := ioutil.ReadFile(filename)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return &Page{Title: title, Body: body}, nil
-}
-
 func indexHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Hi!")
-}
-
-func viewHandler(w http.ResponseWriter, r *http.Request) {
-		title := r.URL.Path[len("/view/"):]
-		p, err := loadPage(title)
-		if err != nil {
-				http.Redirect(w, r, "/edit/"+title, http.StatusFound)
-				return
-		}
-		fmt.Fprintf(w, "<h1>%s</h1><div>%s</div>", p.Title, p.Body)
-}
-
-func bbbHandler(w http.ResponseWriter, r *http.Request) {
-	file := r.URL.Path[len("/bbb/"):]
-	http.ServeFile(w, r, "bbb/" + file)
-}
-
-func stickerHandler(w http.ResponseWriter, r *http.Request) {
-	file := r.URL.Path[len("/sticker/"):]
-	http.ServeFile(w, r, "sticker/" + file)
-}
-
-func editHandler(w http.ResponseWriter, r *http.Request) {
-		title := r.URL.Path[len("/edit/"):]
-		p, err := loadPage(title)
-		if err != nil {
-				p = &Page{Title: title}
-		}
-		t, _ := template.ParseFiles("edit.html")
-		t.Execute(w, p)
-}
-
-func saveHandler(w http.ResponseWriter, r *http.Request) {
-		title := r.URL.Path[len("/save/"):]
-		body := r.FormValue("body")
-		p := &Page{Title: title, Body: []byte(body)}
-		p.save()
-		http.Redirect(w, r, "/view/" + title, http.StatusFound)
 }
 
 func main() {
 	http.HandleFunc("/", indexHandler)
 	http.HandleFunc("/view/", viewHandler)
-	// http.HandleFunc("/edit/", editHandler)
-	// http.HandleFunc("/save/", saveHandler)
 	http.HandleFunc("/sticker/", stickerHandler)
 	http.HandleFunc("/bbb/", bbbHandler)
+	http.HandleFunc("/chat/", chatHandler)
 
 	port := os.Getenv("PORT")
 	if port == "" {
