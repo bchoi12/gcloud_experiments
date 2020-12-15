@@ -16,7 +16,10 @@ func main() {
 	http.HandleFunc("/view/", viewHandler)
 	http.HandleFunc("/sticker/", stickerHandler)
 	http.HandleFunc("/bbb/", bbbHandler)
+	http.HandleFunc("/chatclient", chatClientHandler)
 	http.HandleFunc("/chat/", chatHandler)
+
+	go handleMessages()
 
 	port := os.Getenv("PORT")
 	if port == "" {
