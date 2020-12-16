@@ -1,11 +1,6 @@
 $( document ).ready(function() {
 	$("#chat").css("display", "none");
-
-	window.ws = new WebSocket("ws://" + window.location.host + "/chatclient");
-
-	window.ws.onmessage = function(event) {
-		appendMessage(JSON.parse(event.data))
-	}
+	$("#username").focus();
 
 	$("#username").keyup(function(event) {
 		if (event.keyCode === 13) {
@@ -16,10 +11,23 @@ $( document ).ready(function() {
 		var username = $("#username").val().trim();
 
 		if (usernameValid(username)) {
-			window.username = username;
-			$("#landing").css("display", "none");
-			$("#chat").css("display", "block");
 			$("#messages").append("Logged in as " + username + "<br>");
+			window.ws = new WebSocket("ws://" + window.location.host + "/chatclient");
+			window.ws.onmessage = function(event) {
+				appendMessage(JSON.parse(event.data))
+			}
+
+			waitForConnection(window.ws, function() {
+				window.username = username;
+				$("#landing").css("display", "none");
+				$("#chat").css("display", "block");
+				$("#message").focus();
+				var msg = {
+					username: window.username,
+					message: window.username + " just joined the chat! Say hello."
+				}
+				sendMessage(msg);
+			});
 		}
 	});
 
@@ -33,12 +41,31 @@ $( document ).ready(function() {
 			username: window.username,
 			message: $("#message").val().trim()
 		};
-		if (!messageValid(msg)) return;
-
-		$("#message").val("");
-		window.ws.send(JSON.stringify(msg));
+		sendMessage(msg);
+		$("#message").focus();
 	});
 });
+
+function waitForConnection(socket, callback){
+    setTimeout(
+        function () {
+            if (socket.readyState === 1) {
+                if (callback != null){
+                    callback();
+                }
+            } else {
+                waitForConnection(socket, callback);
+            }
+
+        }, 5);
+}
+
+function sendMessage(msg) {
+	if (!messageValid(msg)) return;
+
+	$("#message").val("");
+	window.ws.send(JSON.stringify(msg));
+}
 
 function appendMessage(msg) {
 	$("#messages").append(msg.username + ": " + msg.message + "<br>");
