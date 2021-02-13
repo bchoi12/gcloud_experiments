@@ -4,59 +4,88 @@ import (
 	"net/http"
 	"github.com/gorilla/websocket"
 	"log"
+	"os"
 )
 
-var clients = make(map[*websocket.Conn]bool)
-var broadcast = make(chan Message)
 var upgrader = websocket.Upgrader{}
+
+var clients = make(map[string]map[*websocket.Conn]bool)
+var broadcast = make(map[string]chan Message)
 
 type Message struct {
 	Username string `json:"username"`
 	Message string `json:"message"`
 }
-var msgQueue = make([]Message, 0)
+var msgQueue = make(map[string][]Message)
 
 
-func handleMessages() {
+func handleMessages(room string) {
 	for {
-		msg := <-broadcast
+		msg := <-broadcast[room]
 
-		for client := range clients {
-			sendMessage(client, msg)
+		if (len(clients[room]) == 0) {
+			delete(clients, room)
+			delete(broadcast, room)
+			break
+		}
+
+		for client := range clients[room] {
+			sendMessage(room, client, msg)
 		}
 	}
 }
 
-func sendMessage(client *websocket.Conn, msg Message) {
+func sendMessage(room string, client *websocket.Conn, msg Message) {
 	err := client.WriteJSON(msg)
 	if err != nil {
 		log.Printf("error writing out message: %v", err)
 		client.Close()
-		delete(clients, client)
+		delete(clients[room], client)
 	}
 }
 
-func broadcastMessage(msg Message) {
-	msgQueue = append(msgQueue, msg)
-	if (len(msgQueue) > 50) {
-		msgQueue = msgQueue[1:50]
+func broadcastMessage(room string, msg Message) {
+	msgQueue[room] = append(msgQueue[room], msg)
+	if (len(msgQueue[room]) > 50) {
+		msgQueue[room] = msgQueue[room][1:50]
 	}
-	broadcast <- msg
+	broadcast[room] <- msg
 }
 
 func chatClientHandler(w http.ResponseWriter, r *http.Request) {
+	room := r.URL.Path[len("/chatclient/"):]
+
+	log.Printf("room is %s", room)
+
+	if len(room) == 0 {
+		log.Printf("error: room name is empty")
+		return
+	}
+
+	if clients[room] == nil {
+		clients[room] = make(map[*websocket.Conn]bool)
+		broadcast[room] = make(chan Message)
+		if msgQueue[room] == nil {
+			msgQueue[room] = make([]Message, 0)
+		}
+	}
+
+	if len(clients[room]) == 0 {
+		go handleMessages(room)
+	}
+
 	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	for _, msg := range msgQueue {
-		sendMessage(ws, msg)
+	for _, msg := range msgQueue[room] {
+		sendMessage(room, ws, msg)
 	}
 
-	defer closeConnection(ws)
+	defer closeConnection(room, ws)
 
-	clients[ws] = true
+	clients[room][ws] = true
 
 	for {
 		var msg Message
@@ -64,31 +93,30 @@ func chatClientHandler(w http.ResponseWriter, r *http.Request) {
 		err := ws.ReadJSON(&msg)
 		if err != nil {
 			log.Printf("error reading incoming message: %v", err)
-			delete(clients, ws)
+			delete(clients[room], ws)
 			break
 		}
 
-		msgQueue = append(msgQueue, msg)
-		if (len(msgQueue) > 50) {
-			msgQueue = msgQueue[1:50]
+		msgQueue[room] = append(msgQueue[room], msg)
+		if (len(msgQueue[room]) > 50) {
+			msgQueue[room] = msgQueue[room][1:50]
 		}
-		broadcast <- msg
+		broadcast[room] <- msg
 	}
 }
 
 func chatHandler(w http.ResponseWriter, r *http.Request) {
-	file := r.URL.Path[len("/chat/"):]
-	http.ServeFile(w, r, "chat/" + file)
+	ext := r.URL.Path[len("/chat/"):]
+	file := "chat/" + ext
+	_, err := os.Stat(file)
+	if len(ext) == 0 || os.IsNotExist(err) {
+		http.ServeFile(w, r, "chat/")
+	} else {
+  		http.ServeFile(w, r, file)
+	}
 }
 
-func closeConnection(ws *websocket.Conn) {
+func closeConnection(room string, ws *websocket.Conn) {
 	ws.Close()
-	delete(clients, ws)
+	delete(clients[room], ws)
 }
-
-/*
-func bbbHandler(w http.ResponseWriter, r *http.Request) {
-	file := r.URL.Path[len("/bbb/"):]
-	http.ServeFile(w, r, "bbb/" + file)
-}
-*/

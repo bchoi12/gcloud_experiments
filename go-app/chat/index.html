@@ -5,15 +5,17 @@
     <title>bChat</title>
 
 	<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
-    <script src="app.js"></script>
+    <script src="/chat/app.js"></script>
 
 </head>
 
 <body>
 	<main>
 		<div id="landing">
-			<input id="username" type="text" placeholder="username">
-			<button id="enter">enter</button>
+			<input id="username" class="login-input" type="text" placeholder="username">
+			<input id="room" class="login-input" type="text" placeholder="room">
+			<button id="enter" class="login-input">enter</button>
+			<div id="error" class="login-input"></div>
 		</div>
 		<div id="chat">
 			<div id="messages">
