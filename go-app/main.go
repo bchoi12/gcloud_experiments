@@ -12,12 +12,11 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	http.HandleFunc("/", indexHandler)
 	http.HandleFunc("/view/", viewHandler)
-	http.HandleFunc("/sticker/", stickerHandler)
-	http.HandleFunc("/bbb/", bbbHandler)
-	http.HandleFunc("/chatclient/", chatClientHandler)
 	http.HandleFunc("/chat/", chatHandler)
+	http.HandleFunc("/chatclient/", chatClientHandler)
+
+	serveFiles("/")
 
 	port := os.Getenv("PORT")
 	if port == "" {

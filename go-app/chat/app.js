@@ -1,3 +1,7 @@
+goog.require('proto.ChatData');
+goog.require('proto.ChatMessage');
+goog.require('proto.ChatNewClient');
+
 $( document ).ready(function() {
 	$("#chat").css("display", "none");
 	$("#username").focus();
@@ -41,19 +45,24 @@ $( document ).ready(function() {
 		}
 	});
 	$("#send").click(function() {
-		var msg = {
-			username: window.username,
-			message: $("#message").val().trim()
-		};
-		sendMessage(msg);
+		var msg = new proto.ChatMessage();
+		msg.setUsername(window.username);
+		msg.setMessage($("#message").val().trim());
+
+		var data = new proto.ChatData();
+		data.setChatMessage(msg);
+
+		sendData(data);
 		$("#message").focus();
 	});
 });
 
 function connect() {
 	window.ws = new WebSocket("ws://" + window.location.host + "/chatclient/" + window.room);
+	window.ws.binaryType = 'arraybuffer';
+
 	window.ws.onmessage = function(event) {
-		appendMessage(JSON.parse(event.data))
+		handleData(proto.ChatData.deserializeBinary(event.data));
 	}
 	window.ws.onclose = function() {
 		connect();
@@ -64,11 +73,15 @@ function connect() {
 		$("#landing").css("display", "none");
 		$("#chat").css("display", "block");
 		$("#message").focus();
-		var msg = {
-			username: window.username,
-			message: window.username + " just joined the chat! Say hello."
-		}
-		sendMessage(msg);
+
+		var msg = new proto.ChatMessage();
+		msg.setUsername(window.username);
+		msg.setMessage(window.username + " just joined the chat! Say hello.");
+
+		var data = new proto.ChatData();
+		data.setChatMessage(msg);
+
+		sendData(data);
 	});
 }
 
@@ -86,10 +99,19 @@ function waitForConnection(socket, callback){
         }, 5);
 }
 
-function sendMessage(msg) {
-	if (!messageValid(msg)) return;
+function handleData(data) {
+	if (!messageValid(data)) {
+		console.log("invalid message received: %s", data.ToString())
+	}
+	if (data.hasChatMessage()) {
+		appendMessage(data.getChatMessage());
+	}
+}
 
-	window.ws.send(JSON.stringify(msg));
+function sendData(data) {
+	if (!messageValid(data)) return;
+
+	window.ws.send(data.serializeBinary(), {binary : true});
 	$("#message").val("");
 }
 
@@ -101,7 +123,7 @@ function roomValid(room) {
 
 
 function appendMessage(msg) {
-	$("#messages").append(msg.username + ": " + msg.message + "<br>");
+	$("#messages").append(msg.getUsername() + ": " + msg.getMessage() + "<br>");
 }
 
 function usernameValid(username) {
@@ -111,10 +133,16 @@ function usernameValid(username) {
 	return true;
 }
 
-function messageValid(msg) {
-	if (!usernameValid(msg.username)) return false;
-	if (!msg.message) return false;
-	if (msg.length > 256) return false;
+function messageValid(data) {
+	if (data.hasChatMessage()) {
+		var msg = data.getChatMessage();
 
-	return true;
+		if (!usernameValid(msg.getUsername())) return false;
+		if (!msg.getMessage()) return false;
+		if (msg.getMessage().length > 256) return false;
+
+		return true;
+	} 
+
+	return false;
 }

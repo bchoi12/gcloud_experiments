@@ -2,6 +2,7 @@ package main
 
 import (
 	"net/http"
+	"github.com/golang/protobuf/proto"
 	"github.com/gorilla/websocket"
 	"log"
 	"os"
@@ -10,13 +11,8 @@ import (
 var upgrader = websocket.Upgrader{}
 
 var clients = make(map[string]map[*websocket.Conn]bool)
-var broadcast = make(map[string]chan Message)
-
-type Message struct {
-	Username string `json:"username"`
-	Message string `json:"message"`
-}
-var msgQueue = make(map[string][]Message)
+var broadcast = make(map[string]chan ChatMessage)
+var msgQueue = make(map[string][]ChatMessage)
 
 
 func handleMessages(room string) {
@@ -35,19 +31,25 @@ func handleMessages(room string) {
 	}
 }
 
-func sendMessage(room string, client *websocket.Conn, msg Message) {
-	err := client.WriteJSON(msg)
+func sendMessage(room string, client *websocket.Conn, msg ChatMessage) {
+	cd := ChatData{}
+	cd.ChatMessage = &msg
+
+	data, err := proto.Marshal(&cd)
+	if err != nil {
+		log.Printf("error packaging message : %v", err)
+	}
+
+	err = client.WriteMessage(websocket.BinaryMessage, data)
 	if err != nil {
 		log.Printf("error writing out message: %v", err)
-		client.Close()
-		delete(clients[room], client)
 	}
 }
 
-func broadcastMessage(room string, msg Message) {
+func broadcastMessage(room string, msg ChatMessage) {
 	msgQueue[room] = append(msgQueue[room], msg)
 	if (len(msgQueue[room]) > 50) {
-		msgQueue[room] = msgQueue[room][1:50]
+		msgQueue[room] = msgQueue[room][1:51]
 	}
 	broadcast[room] <- msg
 }
@@ -55,7 +57,7 @@ func broadcastMessage(room string, msg Message) {
 func chatClientHandler(w http.ResponseWriter, r *http.Request) {
 	room := r.URL.Path[len("/chatclient/"):]
 
-	log.Printf("room is %s", room)
+	log.Printf("room opened/joined: %s", room)
 
 	if len(room) == 0 {
 		log.Printf("error: room name is empty")
@@ -64,9 +66,9 @@ func chatClientHandler(w http.ResponseWriter, r *http.Request) {
 
 	if clients[room] == nil {
 		clients[room] = make(map[*websocket.Conn]bool)
-		broadcast[room] = make(chan Message)
+		broadcast[room] = make(chan ChatMessage)
 		if msgQueue[room] == nil {
-			msgQueue[room] = make([]Message, 0)
+			msgQueue[room] = make([]ChatMessage, 0)
 		}
 	}
 
@@ -88,31 +90,42 @@ func chatClientHandler(w http.ResponseWriter, r *http.Request) {
 	clients[room][ws] = true
 
 	for {
-		var msg Message
+		_, msg, err := ws.ReadMessage()
 
-		err := ws.ReadJSON(&msg)
 		if err != nil {
 			log.Printf("error reading incoming message: %v", err)
-			delete(clients[room], ws)
-			break
+
+			if e, ok := err.(*websocket.CloseError); ok {
+				switch e.Code {
+					case websocket.CloseNormalClosure,
+					websocket.CloseGoingAway,
+					websocket.CloseNoStatusReceived:
+					return
+				}
+			}
 		}
 
-		msgQueue[room] = append(msgQueue[room], msg)
-		if (len(msgQueue[room]) > 50) {
-			msgQueue[room] = msgQueue[room][1:50]
+		chatData := ChatData{}
+		err = proto.Unmarshal(msg, &chatData)
+
+		if err != nil {
+			log.Printf("error parsing incoming message: %v", err)
+			continue
 		}
-		broadcast[room] <- msg
+
+		if chatData.GetChatMessage() != nil {
+			broadcastMessage(room, *chatData.GetChatMessage())
+		}
 	}
 }
 
 func chatHandler(w http.ResponseWriter, r *http.Request) {
-	ext := r.URL.Path[len("/chat/"):]
-	file := "chat/" + ext
-	_, err := os.Stat(file)
-	if len(ext) == 0 || os.IsNotExist(err) {
-		http.ServeFile(w, r, "chat/")
+	f := r.URL.Path[1:]
+
+	if info, err := os.Stat(f); err == nil && !info.IsDir() {
+  		http.ServeFile(w, r, f)
 	} else {
-  		http.ServeFile(w, r, file)
+		http.ServeFile(w, r, "chat/index.html")
 	}
 }
 

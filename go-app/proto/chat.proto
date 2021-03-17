@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+option go_package = ".;main";
+
+message ChatData {
+	ChatMessage chat_message = 1;
+
+//	oneof event {
+//		ChatNewClient new_client = 1;
+//		ChatMessage chat_message = 2;
+//	}
+}
+
+message ChatNewClient {
+	string name = 1;
+}
+
+message ChatMessage {
+	string username = 1;
+	string message = 2;
+}
