@@ -15,20 +15,22 @@ func serveFiles(dir string) {
 		}
 		url := r.URL.Path[1:]
 
-		if file, err := os.Stat(url); os.IsNotExist(err) {
-			log.Printf("404 for url %s", url)
+		info, err := os.Stat(url)
+		if os.IsNotExist(err) {
+			log.Printf("404 for url: %s", url)
 			notFound(w)
-		} else if file.IsDir() {
-			url += "/index.html"
-			if _, err := os.Stat(url); err == nil {
-				http.FileServer(http.Dir(r.URL.Path))
-			} else {
-				log.Printf("404 for dir %s", url)
+			return
+		} else if info.IsDir() {
+			index := url + "/index.html"
+			if _, err := os.Stat(index); os.IsNotExist(err) {
+				log.Printf("404 for url (no index): %s", url)
 				notFound(w)
+				return
 			}
-		} else {
-			http.ServeFile(w, r, url)
-		}
+		} 
+
+		log.Printf("serving file %s", url)
+		http.ServeFile(w, r, url)
 	})
 }
 
