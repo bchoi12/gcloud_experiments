@@ -1,6 +1,6 @@
 # Git shell
 D:
-cd .\projects\go\website\go-app\
+cd .\projects\go\web\go-app\
 git status
 git add -A
 git commit -m "message"
