@@ -8,6 +8,6 @@ git push
 
 # Google Cloud SDK Shell
 D:
-cd .\projects\go\website\go-app\
+cd .\projects\go\web\go-app\
 gcloud app deploy
 Y
