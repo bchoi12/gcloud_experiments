@@ -7,7 +7,7 @@ git commit -m "message"
 git push
 
 # Google Cloud SDK Shell
-D:
+D: or cd ../../..
 cd .\projects\go\web\go-app\
 gcloud app deploy
 Y
